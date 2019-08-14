@@ -65,6 +65,9 @@ class NFOV():
         base_y0 = np.multiply(y0, self.frame_width)
         base_y2 = np.multiply(y2, self.frame_width)
 
+        # https://en.wikipedia.org/wiki/Bilinear_interpolation
+        # A - D -> sind bekannte Punkte dadurch vereinfacht sich die Formel. Die Punkte A - D sind alle Eckpunkte des Bildes. Eventuell sogar zwischen 0 und 1 skaliert.
+
         A_idx = np.add(base_y0, x0)
         B_idx = np.add(base_y2, x0)
         C_idx = np.add(base_y0, x2)
@@ -100,8 +103,14 @@ class NFOV():
         self.frame_channel = frame.shape[2]
 
         self.cp = self._get_coord_rad(center_point=center_point, isCenterPt=True)
+
+        # Hier scheint eine Art der Konvertierung vorzuliegen -> Alles zwischen PI und Pi / 2 aber noch keine Verzezzerungsberechnung
         convertedScreenCoord = self._get_coord_rad(isCenterPt=False)
+
+        # Hier werden die Koordinaten erst wirklich aufgespreizt. sprich nach meinem Verständnis sind diese sperical Coords die Coords die wir brauchen
         spericalCoord = self._calcSphericaltoGnomonic(convertedScreenCoord)
+
+        # Und DANACH wird erst interpoliert!
         return self._bilinear_interpolation(spericalCoord)
 
 
@@ -109,6 +118,7 @@ class NFOV():
 if __name__ == '__main__':
     import imageio as im
     img = im.imread('images/360.jpg')
+    print(f'shae of input image: {img.shape}')
     nfov = NFOV()
     center_point = np.array([0.5, .5])  # camera center point (valid range [0,1])
     nfov.toNFOV(img, center_point)
