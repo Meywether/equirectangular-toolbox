@@ -54,6 +54,8 @@ class NFOV():
         return np.array([lon, lat]).T
 
     def _bilinear_interpolation(self, screen_coord):
+
+        # Hier wird das kleine Bild auf einen großen Raster projeziert. Bzw. hier wird der raster vorbereitet
         uf = np.mod(screen_coord.T[0],1) * self.frame_width  # long - width
         vf = np.mod(screen_coord.T[1],1) * self.frame_height  # lat - height
 
@@ -74,6 +76,10 @@ class NFOV():
         D_idx = np.add(base_y2, x2)
 
         flat_img = np.reshape(self.frame, [-1, self.frame_channel])
+        import matplotlib.pyplot as plt
+        plt.imshow(flat_img)
+        plt.show()
+
 
         A = np.take(flat_img, A_idx, axis=0)
         B = np.take(flat_img, B_idx, axis=0)
@@ -120,5 +126,5 @@ if __name__ == '__main__':
     img = im.imread('images/360.jpg')
     print(f'shae of input image: {img.shape}')
     nfov = NFOV()
-    center_point = np.array([0.5, .5])  # camera center point (valid range [0,1])
+    center_point = np.array([0, .5])  # camera center point (valid range [0,1])
     nfov.toNFOV(img, center_point)
