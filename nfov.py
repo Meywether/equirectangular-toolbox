@@ -15,6 +15,7 @@
 from math import pi
 import numpy as np
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
 class NFOV():
     def __init__(self, height=400, width=800):
@@ -153,7 +154,7 @@ class NFOV():
         # print(y_axis_inter((sphericalCoord[1][1])))
         # print('meep')
 
-        return (x_axis_inter((sphericalCoord[0][0], y_axis_inter((sphericalCoord[0][1]))))), (x_axis_inter((sphericalCoord[1][0])), y_axis_inter((sphericalCoord[1][1])))
+        return (x_axis_inter((sphericalCoord[0][0])), y_axis_inter((sphericalCoord[0][1]))), (x_axis_inter((sphericalCoord[1][0])), y_axis_inter((sphericalCoord[1][1])))
 
 
 # test the class
@@ -179,8 +180,8 @@ if __name__ == '__main__':
     # ]]
 
 
-    bbox0 = [100 / out_width, 375 / out_height] # bild sample nvov -> fenster links oben / rechts unten
-    bbox1 = [250 / out_width, 575 / out_height]
+    bbox0 = [400 / out_width, 150 / out_height] # bild sample nvov -> fenster links oben / rechts unten
+    bbox1 = [575 / out_width, 225 / out_height]
     bbox = np.array(([bbox0, bbox1])).T
     # bbox = np.array([])
     # bbox = np.append(bbox, np.array([100, 200]).T)
@@ -191,8 +192,78 @@ if __name__ == '__main__':
     # print('bbox scaled ' + bbox * 1.5)
     nfovback = NFOV(height=out_height, width=out_width)
     backprojectedBBox = nfovback.backToEqui(img,  bbox=bbox, center_point= center_point)
+    # print(f'shape of backprojectedBox: {backprojectedBBox.shape}')
     # nfov._get_coord_rad_customData()
     # calcSphericalToGnonomic
     # ergebnis muss 4 zahlen im Bereich 0 -1 und im equirectangularraum
     # und mal bildgröße und bildweite -> kreis
     # for schleife mit ganzem rechteck -> müsste verzerrt sein
+
+    # Plotting the bbox coords on the projected img
+    # circle_bbox0 = plt.Circle((380, 140), 15, color='yellow')  # Generating the circle
+    # circle_bbox1 = plt.Circle((525, 235), 15, color='red')  # Generating the circle
+    # fig, ax = plt.subplots()  # note we must use plt.subplots, not plt.subplot
+    # ax.add_artist(circle_bbox0)  # add the circle
+    # ax.add_artist(circle_bbox1)  # add the circle
+    # plt.imshow(projected_img, origin='upper')  # Plotting the point
+    # plt.title('BBOX Coords in planar')
+    # plt.show()
+
+    # plotting a rectangle
+
+    bboxTopLeft = (380, 140)
+    bboxBottomRight = (525, 235)
+
+
+    lengthX = bboxBottomRight[0] - bboxTopLeft[0]
+    lengthY = bboxBottomRight[1] - bboxTopLeft[1]
+
+    linx = np.linspace(380, 525, 525-380, True) # eher vll mti np.arrange
+    print(linx)
+    # print(lengthX)
+    # print(lengthY)
+
+    # Hier alle für die Linie oben und unten
+    topLine = []
+    # for x in range(lengthX + 1):
+    #     if x != 0:
+    #         print(bboxTopLeft[0] + x, bboxTopLeft[1])
+    #         bboxTopLine = [(bboxTopLeft[0] + x) / out_width, bboxTopLeft[1] / out_height]
+    #         bboxTopLine = np.array(([bboxTopLine])).T
+    #         topLine.append(bboxTopLine)
+            # print(bboxTopLeft[0] + x, bboxBottomRight[1])
+    # Hier alle für die Linie links und rechts
+    # for y in range(lengthY + 1):
+    #     if y != 0:
+    #         print(bboxTopLeft[0], bboxTopLeft[1] + y)
+    #         # print(bboxBottomRight[0], bboxBottomRight[1] + y)
+
+
+    # print(nfovback.backToEqui(img,  bbox=topLine, center_point=center_point))
+    # line = []
+    # steps = 30
+    # fig1, ax = plt.subplots()  # note we must use plt.subplots, not plt.subplot
+    # for step in range(1, steps+1):
+    #     bbox0 = [100 / out_width, (100 + step*2) / out_height]  # bild sample nvov -> fenster links oben / rechts unten
+    #     bbox1 = [575 / out_width, (100 + step*2) / out_height]
+    #     # bbox0 = [(100 + 50 * step) / out_width, 100 / out_height]  # bild sample nvov -> fenster links oben / rechts unten
+    #     # bbox1 = [(575 + 25 * step) / out_width, 100 / out_height]
+    #     # print(bbox0)
+    #     # print(bbox1)
+    #     bbox = np.array(([bbox0, bbox1])).T
+    #     # print(bbox)
+    #     line.append(nfovback.backToEqui(img,  bbox=bbox, center_point=center_point))
+    #     # print(line)
+    # for backprojectedBBox in line:
+    #     # print(backprojectedBBox)
+    #     circle_bbox0_equi = plt.Circle((backprojectedBBox[0]), 15, color='magenta')  # Generating the circle
+    #     circle_bbox1_equi = plt.Circle((backprojectedBBox[1]), 15, color='yellow')  # Generating the circle
+    #     ax.add_artist(circle_bbox0_equi)  # add the circle
+    #     ax.add_artist(circle_bbox1_equi)  # add the circle
+    #
+    # plt.imshow(img, origin='upper')  # Plotting the point
+    # plt.title('BBOX Coords in Equirectangular')
+    # plt.show()
+
+
+    print('Efefe')
