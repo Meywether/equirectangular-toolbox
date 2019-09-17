@@ -14,10 +14,11 @@
 
 from math import pi
 import numpy as np
+from scipy.interpolate import interp1d
 
 class NFOV():
     def __init__(self, height=400, width=800):
-        self.FOV = [0.45, 0.45]
+        self.FOV = [0.5, 0.5]
         self.PI = pi
         self.PI_2 = pi * 0.5
         self.PI2 = pi * 2.0
@@ -32,7 +33,10 @@ class NFOV():
             (self.screen_points * 2 - 1) * np.array([self.PI, self.PI_2]) * (
                 np.ones(self.screen_points.shape) * self.FOV)
 
-    def _get_screen_img(self):
+    def _get_coord_rad_customData(self, customCoords):
+        return  (customCoords * 2 - 1) * np.array([self.PI, self.PI_2]) * (np.ones(customCoords.shape) * self.FOV)
+
+    def _get_screen_img(self): # screen = ergebnisbild
         xx, yy = np.meshgrid(np.linspace(0, 1, self.width), np.linspace(0, 1, self.height))
         return np.array([xx.ravel(), yy.ravel()]).T
 
@@ -48,7 +52,8 @@ class NFOV():
         lat = np.arcsin(cos_c * np.sin(self.cp[1]) + (y * sin_c * np.cos(self.cp[1])) / rou)
         lon = self.cp[0] + np.arctan2(x * sin_c, rou * np.cos(self.cp[1]) * cos_c - y * np.sin(self.cp[1]) * sin_c)
 
-        lat = (lat / self.PI_2 + 1.) * 0.5
+
+        lat = (lat / self.PI_2 + 1.) * 0.5 #lat = zw. 0 und 1 für linear mapping auf pixel im nächsten Schritt
         lon = (lon / self.PI + 1.) * 0.5
 
         return np.array([lon, lat]).T
@@ -56,12 +61,14 @@ class NFOV():
     def _bilinear_interpolation(self, screen_coord):
 
         # Hier wird das kleine Bild auf einen großen Raster projeziert. Bzw. hier wird der raster vorbereitet
+
+        # Liefert Rest zurück und mappt damit linear auf die pixel
         uf = np.mod(screen_coord.T[0],1) * self.frame_width  # long - width
         vf = np.mod(screen_coord.T[1],1) * self.frame_height  # lat - height
 
-        x0 = np.floor(uf).astype(int)  # coord of pixel to bottom left
+        x0 = np.floor(uf).astype(int)
         y0 = np.floor(vf).astype(int)
-        x2 = np.add(x0, np.ones(uf.shape).astype(int))  # coords of pixel to top right
+        x2 = np.add(x0, np.ones(uf.shape).astype(int))
         y2 = np.add(y0, np.ones(vf.shape).astype(int))
 
         base_y0 = np.multiply(y0, self.frame_width)
@@ -75,10 +82,10 @@ class NFOV():
         C_idx = np.add(base_y0, x2)
         D_idx = np.add(base_y2, x2)
 
-        flat_img = np.reshape(self.frame, [-1, self.frame_channel])
-        import matplotlib.pyplot as plt
-        plt.imshow(flat_img)
-        plt.show()
+        flat_img = np.reshape(self.frame, [-1, self.frame_channel]) # Hier stecken die farbinformationen drinnen
+        # import matplotlib.pyplot as plt
+        # plt.imshow(flat_img)
+        # plt.show()
 
 
         A = np.take(flat_img, A_idx, axis=0)
@@ -96,13 +103,14 @@ class NFOV():
         BB = np.multiply(B, np.array([wb, wb, wb]).T)
         CC = np.multiply(C, np.array([wc, wc, wc]).T)
         DD = np.multiply(D, np.array([wd, wd, wd]).T)
+        # Hier werden die Farben und Werte auf das neue Bild gemappt
         nfov = np.reshape(np.round(AA + BB + CC + DD).astype(np.uint8), [self.height, self.width, 3])
         import matplotlib.pyplot as plt
         plt.imshow(nfov)
         plt.show()
         return nfov
 
-    def toNFOV(self, frame, center_point):
+    def toNFOV(self, frame, center_point): # Frame = equibild
         self.frame = frame
         self.frame_height = frame.shape[0]
         self.frame_width = frame.shape[1]
@@ -110,7 +118,7 @@ class NFOV():
 
         self.cp = self._get_coord_rad(center_point=center_point, isCenterPt=True)
 
-        # Hier scheint eine Art der Konvertierung vorzuliegen -> Alles zwischen PI und Pi / 2 aber noch keine Verzezzerungsberechnung
+        # Hier scheint eine Art der Konvertierung vorzuliegen -> Alles zwischen PI und Pi / 2 aber noch keine Verzerrungsberechnung
         convertedScreenCoord = self._get_coord_rad(isCenterPt=False)
 
         # Hier werden die Koordinaten erst wirklich aufgespreizt. sprich nach meinem Verständnis sind diese sperical Coords die Coords die wir brauchen
@@ -119,12 +127,72 @@ class NFOV():
         # Und DANACH wird erst interpoliert!
         return self._bilinear_interpolation(spericalCoord)
 
+    def backToEqui(self, img, bbox, center_point):
+        self.cp = self._get_coord_rad(center_point=center_point, isCenterPt=True)
+        # Scale factor is img width / output_img_width ...
+        # scale_x = img.shape[1] / self.width
+        # scale_y = img.shape[0] / self.height
+        # Scaling between 0 - 1
+        # bbox =((bbox[0] / np.array([self.width, self.height])), (bbox[1] / np.array([self.width, self.height])))
+
+        # bbox = list(bbox) # change to [(), ()]
+        # bbox_scaled = (tuple(bbox[0] * np.array([scale_x, scale_y])), tuple(bbox[1] * np.array([scale_x, scale_y])))
+        screen_points = self._get_coord_rad_customData(bbox)
+
+        sphericalCoord = self._calcSphericaltoGnomonic(screen_points)
+        # interpolate img to get bbox expressions between 0 and 1
+
+        x_axis_inter = interp1d([0, 1], [0, img.shape[1]])
+        y_axis_inter = interp1d([0, 1], [0, img.shape[0]])
+        # print(sphericalCoord[1][1])
+        # print('punkt1')
+        # print(x_axis_inter((sphericalCoord[0][0])))
+        # print(y_axis_inter((sphericalCoord[0][1])))
+        # print('punkt2')
+        # print(x_axis_inter((sphericalCoord[1][0])))
+        # print(y_axis_inter((sphericalCoord[1][1])))
+        # print('meep')
+
+        return (x_axis_inter((sphericalCoord[0][0], y_axis_inter((sphericalCoord[0][1]))))), (x_axis_inter((sphericalCoord[1][0])), y_axis_inter((sphericalCoord[1][1])))
+
 
 # test the class
 if __name__ == '__main__':
+    out_height = 400
+    out_width = 800
     import imageio as im
     img = im.imread('images/360.jpg')
-    print(f'shae of input image: {img.shape}')
-    nfov = NFOV()
-    center_point = np.array([0, .5])  # camera center point (valid range [0,1])
-    nfov.toNFOV(img, center_point)
+    print(f'shape of input image: {img.shape}') # zuerst höhe dann breite
+    nfov = NFOV(height=out_height, width=out_width)
+    center_point = np.array([0.5, 0.5])  # camera center point (valid range [0,1])
+    projected_img = nfov.toNFOV(img, center_point)
+
+    # Scale factor is img width / output_img_width ...
+    # scale_x = img.shape[1] / out_width
+    # scale_y = img.shape[0] / out_height
+
+    # BB definieren als tuple
+
+    # bbox = [[
+    #     (100, 200)],
+    #     [(105, 205)
+    # ]]
+
+
+    bbox0 = [100 / out_width, 375 / out_height] # bild sample nvov -> fenster links oben / rechts unten
+    bbox1 = [250 / out_width, 575 / out_height]
+    bbox = np.array(([bbox0, bbox1])).T
+    # bbox = np.array([])
+    # bbox = np.append(bbox, np.array([100, 200]).T)
+    # bbox = np.append(bbox, np.array([105, 205]).T) # (x1,y1), (x2,y2)
+
+    # (customCoords * 2 - 1) * np.array([self.PI, self.PI_2]) * (
+    #         np.ones(customCoords.shape) * self.FOV)
+    # print('bbox scaled ' + bbox * 1.5)
+    nfovback = NFOV(height=out_height, width=out_width)
+    backprojectedBBox = nfovback.backToEqui(img,  bbox=bbox, center_point= center_point)
+    # nfov._get_coord_rad_customData()
+    # calcSphericalToGnonomic
+    # ergebnis muss 4 zahlen im Bereich 0 -1 und im equirectangularraum
+    # und mal bildgröße und bildweite -> kreis
+    # for schleife mit ganzem rechteck -> müsste verzerrt sein
