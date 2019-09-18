@@ -212,32 +212,65 @@ if __name__ == '__main__':
     # plotting a rectangle
 
     bboxTopLeft = (380, 140)
-    bboxBottomRight = (525, 235)
+    bboxBottomRight = (510, 230)
 
 
     lengthX = bboxBottomRight[0] - bboxTopLeft[0]
     lengthY = bboxBottomRight[1] - bboxTopLeft[1]
 
-    linx = np.linspace(380, 525, 525-380, True) # eher vll mti np.arrange
-    print(linx)
+    # linx = np.linspace(380, 525, 525-380, True) # eher vll mti np.arrange
+    # print(linx)
     # print(lengthX)
     # print(lengthY)
 
     # Hier alle für die Linie oben und unten
-    topLine = []
-    # for x in range(lengthX + 1):
-    #     if x != 0:
-    #         print(bboxTopLeft[0] + x, bboxTopLeft[1])
-    #         bboxTopLine = [(bboxTopLeft[0] + x) / out_width, bboxTopLeft[1] / out_height]
-    #         bboxTopLine = np.array(([bboxTopLine])).T
-    #         topLine.append(bboxTopLine)
-            # print(bboxTopLeft[0] + x, bboxBottomRight[1])
-    # Hier alle für die Linie links und rechts
-    # for y in range(lengthY + 1):
-    #     if y != 0:
-    #         print(bboxTopLeft[0], bboxTopLeft[1] + y)
-    #         # print(bboxBottomRight[0], bboxBottomRight[1] + y)
+    topBottLine = []
+    leftAndRight = []
+    rectPlanar = []
+    for x in range(lengthX + 1):
+        if x != 0:
+            print(bboxTopLeft[0] + x, bboxTopLeft[1])
+            bboxTopLine = [(bboxTopLeft[0] + x) / out_width, bboxTopLeft[1] / out_height]
+            bboxTopLine = np.array(([bboxTopLine])).T
+            bboxBottomLine = [(bboxTopLeft[0] + x) / out_width, bboxBottomRight[1] / out_height]
+            bboxBottomLine = np.array(([bboxBottomLine])).T
 
+            rectPlanar.append(((bboxTopLeft[0] + x), bboxTopLeft[1]))
+            rectPlanar.append(((bboxTopLeft[0] + x), bboxBottomRight[1]))
+            # print(bboxTopLeft[0] + x, bboxBottomRight[1])
+
+            topBottLine.append(nfovback.backToEqui(img,  bbox=bboxTopLine, center_point=center_point))
+            topBottLine.append(nfovback.backToEqui(img,  bbox=bboxBottomLine, center_point=center_point))
+        # Hier alle für die Linie links und rechts
+        for y in range(lengthY + 1):
+            if y != 0:
+                bboxLeftLine = [bboxTopLeft[0] / out_width, (bboxTopLeft[1] + y) / out_height]
+                bboxLeftLine = np.array(([bboxLeftLine])).T
+
+                bboxRightLine = [bboxBottomRight[0] / out_width, (bboxBottomRight[1] - y) / out_height]
+                bboxRightLine = np.array(([bboxRightLine])).T
+
+                rectPlanar.append((bboxTopLeft[0], (bboxTopLeft[1] + y)))
+                rectPlanar.append((bboxBottomRight[0] , (bboxBottomRight[1] - y)))
+
+                leftAndRight.append(nfovback.backToEqui(img,  bbox=bboxLeftLine, center_point=center_point))
+                leftAndRight.append(nfovback.backToEqui(img,  bbox=bboxRightLine, center_point=center_point))
+                # print(bboxTopLeft[0], bboxTopLeft[1] + y)
+                # print(bboxBottomRight[0], bboxBottomRight[1] + y)
+                # print(nfovback.backToEqui(img, bbox=bboxTopLine, center_point=center_point))
+
+    fig1, ax = plt.subplots()  # note we must use plt.subplots, not plt.subplot
+    # Planar Plotting
+    for planarbbox in rectPlanar:
+        # print(backprojectedBBox)
+        circle_bbox0_equi = plt.Circle((planarbbox), 1, color='magenta')  # Generating the circle
+        # circle_bbox1_equi = plt.Circle((planarbbox), 5, color='yellow')  # Generating the circle
+        ax.add_artist(circle_bbox0_equi)  # add the circle
+        # ax.add_artist(circle_bbox1_equi)  # add the circle
+
+    plt.imshow(projected_img, origin='upper')  # Plotting the point
+    plt.title('BBOX Coords in Planar')
+    plt.show()
 
     # print(nfovback.backToEqui(img,  bbox=topLine, center_point=center_point))
     # line = []
@@ -254,16 +287,25 @@ if __name__ == '__main__':
     #     # print(bbox)
     #     line.append(nfovback.backToEqui(img,  bbox=bbox, center_point=center_point))
     #     # print(line)
-    # for backprojectedBBox in line:
-    #     # print(backprojectedBBox)
-    #     circle_bbox0_equi = plt.Circle((backprojectedBBox[0]), 15, color='magenta')  # Generating the circle
-    #     circle_bbox1_equi = plt.Circle((backprojectedBBox[1]), 15, color='yellow')  # Generating the circle
-    #     ax.add_artist(circle_bbox0_equi)  # add the circle
-    #     ax.add_artist(circle_bbox1_equi)  # add the circle
-    #
-    # plt.imshow(img, origin='upper')  # Plotting the point
-    # plt.title('BBOX Coords in Equirectangular')
-    # plt.show()
+    fig, ax = plt.subplots()  # note we must use plt.subplots, not plt.subplot
+    for backprojectedBBox in topBottLine:
+        # print(backprojectedBBox)
+        circle_bbox0_equi = plt.Circle((backprojectedBBox[0]), 1, color='magenta')  # Generating the circle
+        circle_bbox1_equi = plt.Circle((backprojectedBBox[1]), 1, color='yellow')  # Generating the circle
+        ax.add_artist(circle_bbox0_equi)  # add the circle
+        ax.add_artist(circle_bbox1_equi)  # add the circle
+
+    # fig3, ax = plt.subplots()  # note we must use plt.subplots, not plt.subplot
+    for backprojectedBBox in leftAndRight:
+        # print(backprojectedBBox)
+        circle_bbox0_equi = plt.Circle((backprojectedBBox[0]), 1, color='green')  # Generating the circle
+        circle_bbox1_equi = plt.Circle((backprojectedBBox[1]), 1, color='cyan')  # Generating the circle
+        ax.add_artist(circle_bbox0_equi)  # add the circle
+        ax.add_artist(circle_bbox1_equi)  # add the circle
+
+    plt.imshow(img, origin='upper')  # Plotting the point
+    plt.title('BBOX Coords in Equirectangular')
+    plt.show()
 
 
     print('Efefe')
